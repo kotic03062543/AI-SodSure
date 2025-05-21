@@ -1,0 +1,125 @@
+cell2
+import os
+from tensorflow.keras.preprocessing.image import load_img, img_to_array
+import numpy as np
+from sklearn.model_selection import train_test_split
+
+def load_dataset(base_dir):
+    categories = ['fresh', 'rotten']
+    images = []
+    labels = []
+
+    for idx, category in enumerate(categories):
+        category_path = os.path.join(base_dir, category)
+        if os.path.exists(category_path):
+            for img_name in os.listdir(category_path):
+                if img_name.endswith('.jpg'):
+                    img_path = os.path.join(category_path, img_name)
+                    img = load_img(img_path, target_size=(128,128))
+                    img_array = img_to_array(img) / 255.0
+                    images.append(img_array)
+                    labels.append(idx)
+    return np.array(images), np.array(labels)
+
+# โหลด train dataset
+train_dir = '/kaggle/input/locbeef-beef-quality-image-dataset/train/train'
+X_train, y_train = load_dataset(train_dir)
+
+# โหลด test dataset
+test_dir = '/kaggle/input/locbeef-beef-quality-image-dataset/test/test'
+X_test, y_test = load_dataset(test_dir)
+
+print(f'Train samples: {len(X_train)}')
+print(f'Test samples: {len(X_test)}')
+
+
+cell3
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense
+
+model = Sequential([
+    Conv2D(32, (3,3), activation='relu', input_shape=(128,128,3)),
+    MaxPooling2D(2,2),
+    Conv2D(64, (3,3), activation='relu'),
+    MaxPooling2D(2,2),
+    Flatten(),
+    Dense(128, activation='relu'),
+    Dense(1, activation='sigmoid')
+])
+
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+history = model.fit(X_train, y_train, epochs=10, batch_size=32, validation_data=(X_test, y_test))
+
+cell4
+import matplotlib.pyplot as plt
+
+# ดึงค่า accuracy และ loss จาก history
+acc = history.history['accuracy']
+val_acc = history.history['val_accuracy']
+loss = history.history['loss']
+val_loss = history.history['val_loss']
+
+epochs = range(1, len(acc) + 1)
+
+# Plot Accuracy
+plt.figure(figsize=(12,5))
+
+plt.subplot(1,2,1)
+plt.plot(epochs, acc, 'bo-', label='Training accuracy')
+plt.plot(epochs, val_acc, 'ro-', label='Validation accuracy')
+plt.title('Training and Validation Accuracy')
+plt.xlabel('Epochs')
+plt.ylabel('Accuracy')
+plt.legend()
+
+# Plot Loss
+plt.subplot(1,2,2)
+plt.plot(epochs, loss, 'bo-', label='Training loss')
+plt.plot(epochs, val_loss, 'ro-', label='Validation loss')
+plt.title('Training and Validation Loss')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.legend()
+
+plt.show()
+
+
+cell5
+from tensorflow.keras.preprocessing import image
+import numpy as np
+
+# กำหนด path ของรูปภาพที่ต้องการทดสอบ (เปลี่ยนเป็น path ของรูปที่ต้องการได้เลย)
+img_path = '/kaggle/input/locbeef-beef-quality-image-dataset/test/test/rotten/Rotten (2182).jpg'
+
+# โหลดรูปภาพ และปรับขนาดให้ตรงกับ input shape ของโมเดล (128x128)
+img = image.load_img(img_path, target_size=(128, 128))
+
+# แปลงรูปเป็น array แล้ว normalize ค่าพิกเซลให้อยู่ในช่วง 0-1
+img_array = image.img_to_array(img) / 255.0
+
+# เพิ่มมิติ batch size ให้เป็น 1 ตัว (รูปเดียว) เพราะโมเดลต้องการ input เป็น batch
+img_array = np.expand_dims(img_array, axis=0)
+
+# ใช้โมเดลที่เทรนแล้วทำนายความน่าจะเป็นว่าเนื้อเป็น 'เน่า' (class 1)
+prediction = model.predict(img_array)
+pred = float(prediction.squeeze())  # ค่าผลลัพธ์ sigmoid ระหว่าง 0-1
+
+# คำนวณเปอร์เซ็นต์ความสด โดยการเอา 1 - ความน่าจะเป็นเป็น 'เน่า'
+freshness_percent = (1 - pred) * 100
+
+# กำหนดชื่อ class สำหรับแปลผล (index 0 = สด, index 1 = เน่า)
+class_names = ['สด', 'เน่า']
+
+# เลือกคลาสที่โมเดลทำนาย โดยถ้า pred < 0.5 แปลว่า 'สด'
+predicted_class = class_names[int(pred < 0.5)]
+
+# แสดงผลการวิเคราะห์ภาพ
+print("📸 กำลังวิเคราะห์ภาพ...")
+print(f"💡 ความสดของเนื้อชิ้นนี้คือ: {freshness_percent:.2f}%")
+
+# แสดงสถานะสดหรือเน่า พร้อมเปอร์เซ็นต์ความมั่นใจ
+if freshness_percent >= 50:
+    print(f"✅ คาดว่าเนื้อ 'สด' (ความมั่นใจ {freshness_percent:.2f}%)")
+else:
+    print(f"⚠️ คาดว่าเนื้อ 'เน่า' (ความมั่นใจ {100 - freshness_percent:.2f}%)")
