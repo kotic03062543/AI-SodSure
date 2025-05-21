@@ -1,0 +1,15 @@
+1. ลง lib run => 
+```bash
+pip install streamlit tensorflow pillow
+```
+
+2. สร้างไฟล์ sodsure_app.py แล้ววางโค้ดนี้ลงไป:
+
+3. รันแอปด้วยคำสั่งนี้:
+```bash
+streamlit run sodsure_app.py
+```
+
+meat_model.h5 คือ โมเดลที่ใช้ในการทำนาย โมเดลนี้ถูกสร้างขึ้นจากการฝึกด้วย TensorFlow และ Keras โดยใช้ข้อมูลภาพของเนื้อสัตว์ที่มีความสดต่างกัน
+
+จบ
